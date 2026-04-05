@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Penyimpan Email</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1e1e2f, #3a3a6a);
+      color: #fff;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+    }
+    .card {
+      background: #2b2b45;
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .text {
+      font-size: 14px;
+      word-break: break-all;
+    }
+    button {
+      background: #00c3ff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #000;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #00a1d6;
+    }
+  </style>
+</head>
+<body>
+  <h1>📧 Data Email Saya</h1>
+  <div class="container" id="list"></div>
+
+  <script>
+    const data = `paramagamer0@gmail.com:Erpan1140
+putrianisilalahi04@gmail.com:Godbless04
+azridestiny99@gmail.com:Azri1172
+as200455@gmail.com:SAkt12010
+araryahafizh@gmail.com:Abid2002
+nuur.handayanni@gmail.com:23Oktober87
+jhosjuandavid2007@gmail.com:Jhosjuan2007
+adrielcorables@gmail.com:Chewchewy0227
+miroshnikov-artur@mail.ru:Arturqwe1
+valerakiryanov@mail.ru:Porshe2012
+hisambae496@gmail.com:Hisamjr1
+anifbisa@gmail.com:Anif3556
+magiargullos@hotmail.com:Magi1993
+mardanrizky@gmail.com:Della1524
+marfilc21@gmail.com:Br89q4b9gb
+marflfz5@gmail.com:Coolermaster123
+margad0328@gmail.com:Chimdee0128
+mariano.211991@gmail.com:Locuras20
+marianocsc@hotmail.com:Zitro123
+mariarachel3008@gmail.com:Akukapanultah30`;
+
+    const list = document.getElementById("list");
+
+    data.split("\n").forEach(item => {
+      const div = document.createElement("div");
+      div.className = "card";
+
+      const text = document.createElement("div");
+      text.className = "text";
+      text.innerText = item;
+
+      const btn = document.createElement("button");
+      btn.innerText = "Copy";
+      btn.onclick = () => {
+        navigator.clipboard.writeText(item);
+        btn.innerText = "Copied!";
+        setTimeout(() => btn.innerText = "Copy", 1000);
+      };
+
+      div.appendChild(text);
+      div.appendChild(btn);
+      list.appendChild(div);
+    });
+  </script>
+</body>
+</html>

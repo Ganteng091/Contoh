@@ -3,90 +3,123 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Simulasi Trading</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+  <title>Pro Trading Simulator</title>
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
   <style>
-    body { font-family: Arial; background:#0f172a; color:#e2e8f0; text-align:center; }
-    .container { width:90%; margin:auto; }
-    canvas { background:#111827; border-radius:10px; }
-    button, select { margin:10px; padding:10px; border-radius:8px; border:none; }
-    .buy { background:#22c55e; }
-    .sell { background:#ef4444; }
+    body{margin:0;font-family:sans-serif;background:#0b1220;color:#fff}
+    .wrap{max-width:520px;margin:auto;padding:10px}
+    .card{background:#111827;padding:10px;border-radius:12px}
+    #chart{height:50vh}
+    select,button,input{padding:8px;margin:4px;border-radius:8px;border:none}
+    button{color:#fff}
+    .buy{background:#22c55e}
+    .sell{background:#ef4444}
   </style>
 </head>
 <body>
-  <h1>Simulasi Trading Crypto & Saham</h1>
-  <div class="container">
-    <select id="asset">
-      <option value="BTC">BTC</option>
-      <option value="ETH">ETH</option>
-      <option value="BMRI">BMRI</option>
+<div class="wrap">
+  <div class="card">
+    <h3>Trading Simulator PRO</h3>
+    <select id="symbol">
+      <option value="btcusdt">BTC/USDT</option>
+      <option value="ethusdt">ETH/USDT</option>
+      <option value="bnbusdt">BNB/USDT</option>
     </select>
+    <select id="tf">
+      <option value="1m">1m</option>
+      <option value="5m">5m</option>
+      <option value="15m">15m</option>
+    </select>
+    <div id="chart"></div>
 
+    <p>Harga: <span id="price">-</span></p>
     <p>Saldo: <span id="balance">10000</span></p>
-    <p>Aset: <span id="assetQty">0</span></p>
+    <p>Aset: <span id="qty">0</span></p>
+    <p>PnL: <span id="pnl">0</span></p>
 
+    <input id="amount" placeholder="Qty" type="number" step="0.001">
     <button class="buy" onclick="buy()">BUY</button>
     <button class="sell" onclick="sell()">SELL</button>
-
-    <canvas id="chart"></canvas>
   </div>
+</div>
 
 <script>
-let balance = 10000;
-let assetQty = 0;
-let price = 100;
-let data = [];
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+  layout:{background:{color:'#111827'},textColor:'#fff'}
+});
+const candleSeries = chart.addCandlestickSeries();
+const maSeries = chart.addLineSeries({color:'yellow'});
 
-function generateCandle() {
-  let open = price;
-  let close = open + (Math.random() - 0.5) * 10;
-  let high = Math.max(open, close) + Math.random() * 5;
-  let low = Math.min(open, close) - Math.random() * 5;
-  price = close;
-  return {x: new Date(), o: open, h: high, l: low, c: close};
+let balance=10000, qty=0, entry=0, lastPrice=0;
+
+function updateUI(){
+  document.getElementById('balance').innerText=balance.toFixed(2);
+  document.getElementById('qty').innerText=qty.toFixed(4);
+  document.getElementById('price').innerText=lastPrice.toFixed(2);
+  let pnl = qty>0?(lastPrice-entry)*qty:0;
+  document.getElementById('pnl').innerText=pnl.toFixed(2);
 }
 
-for(let i=0;i<30;i++) data.push(generateCandle());
+async function load(){
+  let sym=document.getElementById('symbol').value;
+  let tf=document.getElementById('tf').value;
+  let res=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym.toUpperCase()}&interval=${tf}&limit=200`);
+  let data=await res.json();
 
-const ctx = document.getElementById('chart').getContext('2d');
-const chart = new Chart(ctx, {
-  type: 'candlestick',
-  data: {
-    datasets: [{
-      label: 'Harga',
-      data: data
-    }]
+  let candles=data.map(d=>({time:d[0]/1000,open:+d[1],high:+d[2],low:+d[3],close:+d[4]}));
+  candleSeries.setData(candles);
+
+  // MA
+  let ma=[];
+  for(let i=10;i<candles.length;i++){
+    let sum=0;
+    for(let j=0;j<10;j++) sum+=candles[i-j].close;
+    ma.push({time:candles[i].time,value:sum/10});
   }
-});
+  maSeries.setData(ma);
 
-setInterval(() => {
-  data.push(generateCandle());
-  data.shift();
-  chart.update();
-}, 2000);
+  lastPrice=candles[candles.length-1].close;
+  updateUI();
+}
 
-function buy(){
-  if(balance >= price){
-    assetQty += 1;
-    balance -= price;
+let ws;
+function live(){
+  if(ws) ws.close();
+  let sym=document.getElementById('symbol').value;
+  let tf=document.getElementById('tf').value;
+  ws=new WebSocket(`wss://stream.binance.com:9443/ws/${sym}@kline_${tf}`);
+
+  ws.onmessage=e=>{
+    let k=JSON.parse(e.data).k;
+    let c={time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c};
+    candleSeries.update(c);
+    lastPrice=c.close;
     updateUI();
   }
+}
+
+function buy(){
+  let amt=parseFloat(amount.value);
+  if(balance<amt*lastPrice) return alert('Saldo kurang');
+  entry=(entry*qty + amt*lastPrice)/(qty+amt);
+  qty+=amt;
+  balance-=amt*lastPrice;
+  updateUI();
 }
 
 function sell(){
-  if(assetQty > 0){
-    assetQty -= 1;
-    balance += price;
-    updateUI();
-  }
+  let amt=parseFloat(amount.value);
+  if(amt>qty) return alert('Aset kurang');
+  qty-=amt;
+  balance+=amt*lastPrice;
+  if(qty==0) entry=0;
+  updateUI();
 }
 
-function updateUI(){
-  document.getElementById('balance').innerText = balance.toFixed(2);
-  document.getElementById('assetQty').innerText = assetQty;
-}
+symbol.onchange=()=>{load();live()};
+tf.onchange=()=>{load();live()};
+
+load().then(live);
 </script>
 </body>
 </html>

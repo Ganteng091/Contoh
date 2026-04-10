@@ -1,128 +1,173 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pro Trading Simulator</title>
-  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-  <style>
-    body{margin:0;font-family:sans-serif;background:#0b1220;color:#fff}
-    .wrap{max-width:520px;margin:auto;padding:10px}
-    .card{background:#111827;padding:10px;border-radius:12px}
-    #chart{height:50vh}
-    select,button,input{padding:8px;margin:4px;border-radius:8px;border:none}
-    button{color:#fff}
-    .buy{background:#22c55e}
-    .sell{background:#ef4444}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON INJECTOR PRO</title>
+
+<style>
+body{
+  margin:0;
+  background:black;
+  font-family:monospace;
+  color:#00ffcc;
+}
+
+.container{
+  width:90%;
+  max-width:420px;
+  margin:60px auto;
+  text-align:center;
+}
+
+h2{
+  text-shadow:0 0 10px #00ffcc,0 0 20px #00ffcc;
+}
+
+input, select, button{
+  width:100%;
+  padding:10px;
+  margin:8px 0;
+  border:none;
+  border-radius:5px;
+  outline:none;
+}
+
+input, select{
+  background:#111;
+  color:#00ffcc;
+  border:1px solid #00ffcc;
+}
+
+button{
+  background:#00ffcc;
+  color:black;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.hidden{display:none;}
+
+#terminal{
+  height:260px;
+  overflow:auto;
+  border:1px solid #00ffcc;
+  padding:10px;
+  text-align:left;
+}
+
+.bar{
+  width:0%;
+  height:10px;
+  background:#00ffcc;
+  margin-top:10px;
+  transition:0.3s;
+}
+</style>
+
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <h3>Trading Simulator PRO</h3>
-    <select id="symbol">
-      <option value="btcusdt">BTC/USDT</option>
-      <option value="ethusdt">ETH/USDT</option>
-      <option value="bnbusdt">BNB/USDT</option>
-    </select>
-    <select id="tf">
-      <option value="1m">1m</option>
-      <option value="5m">5m</option>
-      <option value="15m">15m</option>
-    </select>
-    <div id="chart" style="width:100%;height:300px"></div>
 
-    <p>Harga: <span id="price">-</span></p>
-    <p>Saldo: <span id="balance">10000</span></p>
-    <p>Aset: <span id="qty">0</span></p>
-    <p>PnL: <span id="pnl">0</span></p>
+<!-- LOGIN -->
+<div class="container" id="login">
+  <h2>ACCESS LOGIN</h2>
+  <input type="text" id="user" placeholder="Username">
+  <input type="password" id="pass" placeholder="Password">
+  <button onclick="login()">ENTER SYSTEM</button>
+</div>
 
-    <input id="amount" placeholder="Qty" type="number" step="0.001">
-    <button class="buy" onclick="buy()">BUY</button>
-    <button class="sell" onclick="sell()">SELL</button>
-  </div>
+<!-- MENU -->
+<div class="container hidden" id="menu">
+  <h2>CONTROL PANEL</h2>
+
+  <input type="text" placeholder="Nomor Target">
+
+  <select id="mode">
+    <option>Spam Chat Brutal</option>
+    <option>Auto Crash Engine</option>
+    <option>Invisible Freeze</option>
+    <option>Delay Bomb</option>
+    <option>Ghost Spam V2</option>
+  </select>
+
+  <select>
+    <option>Power: Low</option>
+    <option>Power: Medium</option>
+    <option>Power: High</option>
+  </select>
+
+  <button onclick="inject()">START INJECT</button>
+</div>
+
+<!-- RESULT -->
+<div class="container hidden" id="result">
+  <h2>SYSTEM TERMINAL</h2>
+  <div id="terminal"></div>
+  <div class="bar" id="bar"></div>
+  <button onclick="download()">DOWNLOAD RESULT</button>
 </div>
 
 <script>
-const chartContainer = document.getElementById('chart');
-const chart = LightweightCharts.createChart(chartContainer, {
-  width: chartContainer.clientWidth,
-  height: 300,
-  layout:{background:{color:'#111827'},textColor:'#fff'}
-});
-const candleSeries = chart.addCandlestickSeries();
-const maSeries = chart.addLineSeries({color:'yellow'});
 
-let balance=10000, qty=0, entry=0, lastPrice=0;
+function login(){
+  let u=document.getElementById("user").value;
+  let p=document.getElementById("pass").value;
 
-function updateUI(){
-  document.getElementById('balance').innerText=balance.toFixed(2);
-  document.getElementById('qty').innerText=qty.toFixed(4);
-  document.getElementById('price').innerText=lastPrice.toFixed(2);
-  let pnl = qty>0?(lastPrice-entry)*qty:0;
-  document.getElementById('pnl').innerText=pnl.toFixed(2);
-}
-
-async function load(){
-  let sym=document.getElementById('symbol').value;
-  let tf=document.getElementById('tf').value;
-  let res=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym.toUpperCase()}&interval=${tf}&limit=200`);
-  let data=await res.json();
-
-  let candles=data.map(d=>({time:d[0]/1000,open:+d[1],high:+d[2],low:+d[3],close:+d[4]}));
-  candleSeries.setData(candles);
-
-  // MA
-  let ma=[];
-  for(let i=10;i<candles.length;i++){
-    let sum=0;
-    for(let j=0;j<10;j++) sum+=candles[i-j].close;
-    ma.push({time:candles[i].time,value:sum/10});
-  }
-  maSeries.setData(ma);
-
-  lastPrice=candles[candles.length-1].close;
-  updateUI();
-}
-
-let ws;
-function live(){
-  if(ws) ws.close();
-  let sym=document.getElementById('symbol').value;
-  let tf=document.getElementById('tf').value;
-  ws=new WebSocket(`wss://stream.binance.com:9443/ws/${sym}@kline_${tf}`);
-
-  ws.onmessage=e=>{
-    let k=JSON.parse(e.data).k;
-    let c={time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c};
-    candleSeries.update(c);
-    lastPrice=c.close;
-    updateUI();
+  if(u==="zaim" && p==="zaimgg"){
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("menu").classList.remove("hidden");
+  }else{
+    alert("ACCESS DENIED");
   }
 }
 
-function buy(){
-  let amt=parseFloat(amount.value);
-  if(balance<amt*lastPrice) return alert('Saldo kurang');
-  entry=(entry*qty + amt*lastPrice)/(qty+amt);
-  qty+=amt;
-  balance-=amt*lastPrice;
-  updateUI();
+function inject(){
+  document.getElementById("menu").classList.add("hidden");
+  document.getElementById("result").classList.remove("hidden");
+
+  let term=document.getElementById("terminal");
+  let bar=document.getElementById("bar");
+
+  let logs=[
+    "[✓] Initializing core...",
+    "[✓] Loading exploit modules...",
+    "[✓] Bypassing firewall...",
+    "[✓] Encrypting payload...",
+    "[✓] Connecting to server...",
+    "[✓] Target locked...",
+    "[✓] Sending packets...",
+    "[✓] Injecting system...",
+    "[✓] Executing command...",
+    "[✓] Finalizing..."
+  ];
+
+  let i=0;
+  let progress=0;
+
+  let interval=setInterval(()=>{
+    term.innerHTML += logs[i] + "<br>";
+    term.scrollTop = term.scrollHeight;
+
+    progress+=10;
+    bar.style.width=progress+"%";
+
+    i++;
+    if(i>=logs.length){
+      term.innerHTML += "<br>>> STATUS: SUCCESS ✔";
+      clearInterval(interval);
+    }
+
+  },500);
 }
 
-function sell(){
-  let amt=parseFloat(amount.value);
-  if(amt>qty) return alert('Aset kurang');
-  qty-=amt;
-  balance+=amt*lastPrice;
-  if(qty==0) entry=0;
-  updateUI();
+function download(){
+  let a=document.createElement("a");
+  a.href="data:application/zip;base64,UEsDBBQAAAAI";
+  a.download="result.zip";
+  a.click();
 }
 
-symbol.onchange=()=>{load();live()};
-tf.onchange=()=>{load();live()};
-
-load().then(live);
 </script>
+
 </body>
 </html>
